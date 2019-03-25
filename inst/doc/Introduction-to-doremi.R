@@ -1,6 +1,7 @@
 ## ---- include = FALSE----------------------------------------------------
-library(ggplot2)
-library(doremi)
+ library(ggplot2)
+ library(doremi)
+set.seed(1)
 knitr::opts_chunk$set(
   collapse = TRUE,
   warning = FALSE,

@@ -1,7 +1,7 @@
 Package: doremi
 Type: Package
 Title: Dynamics of Return to Equilibrium During Multiple Inputs
-Version: 0.1.0
+Version: 0.1.1
 Authors@R: c(
     person("Mongin", "Denis", email = "Denis.Mongin@hcuge.ch", role = "aut"),
     person("Uribe", "Adriana", email = "adriana.uribe@unige.ch", role = "aut"),
@@ -21,11 +21,11 @@ RoxygenNote: 6.1.0
 Suggests: knitr, rmarkdown, devtools, roxygen2
 VignetteBuilder: knitr
 NeedsCompilation: no
-Packaged: 2018-08-22 19:57:59 UTC; Alba
+Packaged: 2019-03-15 11:00:10 UTC; Alba
 Author: Mongin Denis [aut],
   Uribe Adriana [aut],
   Courvoisier Delphine [aut],
   Courvoisier Delphine [cre]
 Maintainer: Courvoisier Delphine <Delphine.Courvoisier@hcuge.ch>
 Repository: CRAN
-Date/Publication: 2018-08-30 16:20:15 UTC
+Date/Publication: 2019-03-25 14:30:03 UTC
