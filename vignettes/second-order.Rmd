@@ -1,0 +1,487 @@
+---
+title: "second-order"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{second-order}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r options, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  fig.align="center",
+  fig.width = 5,
+  fig.height = 5,
+  comment = "#>"
+)
+```
+
+
+```{r libraries, setup}
+library(doremi)
+```
+
+
+
+# SECOND ORDER DIFFERENTIAL EQUATIONS
+
+The differential equation considered in this case is the following:
+
+$$\frac{d^2y}{dt} + 2\xi\omega_{n}\frac{dy}{dt} + \omega_{n}^2 y = k\omega_{n}^2u(t)$$
+(1)
+
+Where:
+
+* $y(t)$ is the signal to be analyzed
+
+* $\frac{dy}{dt}$ is its first derivative
+
+* $\frac{d^2y}{dt}$ is its second derivative
+
+* $u(t)$ is the excitation term perturbing the dynamics of $y(t)$
+
+And regarding the coefficients:
+  
+* $\omega_{n} = \frac{2\pi}{T}$ is the system's natural frequency, the frequency with which the system would oscillate if there were no damping. $T$ is the corresponding period of oscillation. The term $\omega_{n}^2$ represents thus the ratio between the attraction to the equilibrium and the inertia. If we considered the example of a mass attached to a spring, this term would represent the ratio of the spring constant and the object's mass.
+
+* $\xi$ is the damping ratio. It represents the friction that damps the oscillation of the system (slows the rate of change of the variable). The value of $\xi$ determines the shape of the system time response, which can be:
+     $\xi<0$	Unstable, oscillations of increasing magnitude
+     $\xi=0$	Undamped, oscillating
+     $0<\xi<1$	Underdamped or simply "damped". Most of the studies use this model, also referring to it as "Damped Linear Oscillator" (DLO).
+     $\xi=1$	Critically damped
+     $\xi>1$	Over-damped, no oscillations in the return to equilibrium
+
+* $k$ is the gain. It represents the proportionality between the stationary increase of $y$ and the constant increase of $u$ that caused it.
+
+* $yeq$ is the signal equilibrium value, i.e. the stationary value reached when the excitation term is 0.
+
+If the excitation term $u(t)$ is null, then the equation reduce to
+
+$$\frac{d^2y}{dt} + 2\xi\omega_{n}\frac{dy}{dt} + \omega_{n}^2 y =  0$$
+(2)
+
+Equation (2) can also be found in the social/behavioral sciences literature as:
+$$y'' + \zeta y' + \eta y = 0$$
+(3)
+That assumes the $y_{eq}$ is 0.
+
+In which: 
+$$\zeta= 2\xi\omega_{n}$$
+and 
+$$\eta=\omega_{n}^2$$
+(4)
+
+The dynamics in this case are then provoked either by a previous excitation that is no longer present or by the displacement of the system from its equilibrium position (either due to an initial condition different from 0 or an initial "speed" or derivative at time 0 different from 0):
+$$y(t=0)=y_{0}$$
+$$\frac{dy}{dt}(t=0)=v_{0}$$
+The shape of the solution to equation (2) -also called trajectory, or system response in engineering- will change according to the values of the parameters $\xi$ and $\omega_{n}^2$ presented, specially the values of $\xi$, as this parameter will define if the behavior is divergent, oscillating or undamped, underdamped (oscillations decreasing exponentially) or overdamped (system going back to equilibrium without oscillations) as it can be seen in the figure below:
+
+```{r different forms according to xi,fig.width = 5, fig.height = 4, fig.align = "center"}
+data11a <- data.table::rbindlist(lapply(seq(0,2,0.2), 
+                            function(eps){
+                              generate.2order(time = 0:49, 
+                                              y0 = 1, 
+                                              xi = eps, 
+                                              period = 20)[,xi := eps][]
+                            }))
+# plot
+ggplot2::ggplot(data11a,ggplot2::aes(t,y,color = as.factor(xi)))+
+  ggplot2::geom_line() +
+  ggplot2::labs(x = "time (arb. unit)", y = "signal (arb. unit)", colour = "xi")
+```
+
+## Simulating data
+
+Two functions are available to simulate data in the package: `generate.2order` simulate the solution of the differential equation for a given vector of time, and the parameters period = $T$, xi = $\xi$, yeq = $y_{eq}$, y0 = $y(t = 0)$, v0 = $\frac{dy}{dt}(t=0)$, k = $k$ and the vector excitation $u(t)$. The function create a data.table with a column t for the time, y for the signal, and exc for the excitation.
+
+```{r}
+test <- generate.2order(time = 0:100,y0 = 10,v0 = 0,period = 10,xi = 0.2)
+plot(test$t,test$y)
+```
+
+The function `generate.panel.2order` uses `generate.2order` to generate a panel of `nind` individuals, with measurement noise and inter-individual noise.
+
+### Example 1 - Generating Damped Linear Oscillator signals with inter-individual variability
+
+The parameter `internoise` allow the parameters of the differential equation to vary between the individuals. They are in this case distributed along a normal distribution centered on the parameter value given to the `generate.panel.2order` function with a standard deviation of `internoise`parameter.
+The parameter `intranoise` allows to ass measurement noise. `intranoise` is the ratio between the measurement noise' standard deviation and the signal' standard deviation.
+
+```{r simulation example 1}
+time <- 0:100
+set.seed(123)
+data1 <- generate.panel.2order(time = time,
+                               y0 = 10,
+                               xi = 0.1,
+                               period = 30,
+                               yeq = 2,
+                               nind = 6,
+                               internoise = 0.1,
+                               intranoise = 0.3)
+data1
+```
+
+When there is no excitation, the input can be set to NULL  (default value), like in the example above. As presented on the first order differential equation vignette, the result can be easily plotted through the `plot` command:
+```{r dlo plot data1,fig.width = 7, fig.height = 6, fig.align = "center"}
+plot(data1) +
+  ggplot2::geom_hline(yintercept=0)
+```  
+
+We see here that the period, the equilibrium value and the damping parameter vary between each individual.
+
+### Example 2 - Using simulation functions to generate undamped, critically damped and overdamped signals
+
+Let's note that the damping ratio parameter allows to generate not only oscillating signals, that is when $0<\xi<1$, but also signals where the system can reach its equilibrium value without oscillations: these are the critically damped ($\xi=1$) and overdamped ($\xi>1$). The simulation functions of the package also allow the generation of these behaviors, as shown below:
+
+```{r simulation example2}
+set.seed(123)
+data2a <- generate.panel.2order(time = 0:99,
+                               y0 = 1,
+                               period = 30,
+                               nind = 1,
+                               intranoise = 0.2)
+set.seed(123)
+data2b <- generate.panel.2order(time = 0:99,
+                               y0 = 1,
+                               xi = 1,
+                               period = 30,
+                               intranoise = 0.2)
+set.seed(123)
+data2c <- generate.panel.2order(time = 0:99,
+                               y0 = 1,
+                               xi = 2,
+                               period = 30,
+                               intranoise = 0.2)
+
+```
+
+```{r plot example2,fig.width = 7, fig.height = 5, fig.align = "center"}
+gridExtra::grid.arrange(plot(data2a)+
+               ggplot2::ggtitle("undamped, xi=0"), 
+             plot(data2b)+
+               ggplot2::ggtitle("critically damped, xi=1"), 
+             plot(data2c)+
+               ggplot2::ggtitle("overdamped, xi=2"), ncol= 3)
+```
+
+
+## Analyzing data
+
+### Example 1 - Analyzing Damped Linear Oscillator signals
+
+Analyzing the previous dataset and as for the first order model, the user must specify the name of the columns containing the id of the participants, the excitation, and the signal. Several methods are available for the estimation of the derivatives and the user needs to specify which method to use (`gold` is the default) and the embedding dimension/smoothing parameter (see the package pdf manual for more details).
+
+```{r analysis, example1}
+res1 <- analyze.2order(data = data1,
+                        id = "id",
+                        time ="time",
+                        signal = "signal",
+                        dermethod = "glla",
+                        derparam = 13,
+                        order = 2)
+```
+
+Now let’s take a look at the result. It is possible to plot the estimated curve from the estimated coefficients, to visually inspect the analysis:
+  
+```{r analysis plot res1,fig.width = 7, fig.height = 6, fig.align = "center"}
+plot(res1)
+```
+
+The different parts of the resulting doremi object are the same as those for the first order:
+
+* data: contains the original dataset and extra columns for intermediate calculations. The column "signalname_derivate2" is the only additional one with respect to the first order result.
+
+* resultmean: contains the fixed coefficients resulting from the regression for all the individuals. It is also the part of the result displayed when one calls the variable name (that calls the print method for doremi objects):
+
+```{r print res1}
+res1
+```
+
+Beware that, as known in the two-steps procedures, and as in the first order case, the estimation of derivatives is a source of bias and thus the error terms provided by the regression are not final. Nevertheless, it is possible to obtain from the summary of the regression the standard errors calculated for the coefficients estimated that will be $\zeta$, $\eta$ (see equations 3 and 4) and $y_{eq}\zeta$ if the equilibrium value is different from 0.
+
+In the resultid object, the first columns are the terms resulting from the regression:
+
+  * omega2 is the term $\omega_n^2$ or $\eta$, with its standard error omega2_stde
+
+  * xi2omega is the term $2\xi \omega_n^2$ or $\zeta$, with its standard error xi2omega_stde
+
+  * yeqomega2 is $y_{eq}\omega_n^2$ or $y_{eq}\zeta$, with its standard error yeqomega2_stde
+  
+  * komega2 is $k\omega^2$ the coefficient associated to the external excitation term in the regression, with its standard error komega2_stde. As there is no excitation on this example, it is NA.
+
+Whereas the following are the values calculated from these first columns:
+
+  * period is the oscillation period, that can be extracted from the term $\omega_n^2$, were $T=2\pi/\omega_n$
+
+  * wn is the natural frequency, calculated also from the term omega2 = $\omega_n^2$
+
+  * xi is the damping factor, calculated from the term xi2omega = $2\xi \omega_n^2$
+
+  * yeq is the equilibrium value, calculated from yeqomega2 = $y_{eq}\omega_n^2$
+  
+  * k is the gain, calculated from komega2
+
+
+* resultid: contains the same coefficients but reconstructed for each individual. In the figure above it can be seen that for some of them, the fit wasn't very good. This will be enhanced using the function `optimum_param` that will identify which embedding number produces the best estimate, as for the first order case. For each individual we then have:
+  
+```{r print res1 and components}
+res1$resultid
+```
+
+
+* regression: contains the summary of the multilevel regression carried out to fit the coefficients
+
+The doremi object will also contain the derivative method used and the embedding number/smoothing parameter used for further reference.
+
+# SECOND ORDER DIFFERENTIAL EQUATION MODELS WITH AN EXCITATION TERM
+
+## Simulating data 
+
+### Example 1 - Generating signals with no noise
+
+In this example we will generate data for 5 individuals, that respond to a "step" excitation (an excitation that changes value abruptly, from 0 to 1 in this case). We will consider no dynamic noise, no variation of the damping factor, period, or equilibrium value across individuals (no interindividual noise). 
+
+```{r 2nd order with excitation example1}
+time <- 0:100
+data1 <- generate.panel.2order(time = time,
+                               excitation = as.numeric(time>20),
+                               xi = 0.1,
+                               period = 30,
+                               k = 1,
+                               nind = 5)
+```
+
+Plotting once more the data with the plot method available in the package for doremidata objects:
+```{r plot data1,fig.width = 7, fig.height = 6, fig.align = "center"}
+plot(data1)
+```  
+
+### Example 2 - Generating signals with noise
+
+The call to the function remains almost the same, this time with a noise to signal ratio of 0.3 and a 20% inter-individual noise:
+
+```{r example2}
+# Generation of signals with intra and inter-noise
+time <- 0:100
+data2 <- generate.panel.2order(time = time,
+                               excitation = as.numeric(time>20),
+                               xi = 0.1,
+                               period = 30,
+                               k = 1,
+                               nind = 5,
+                               internoise = 0.2,
+                               intranoise = 0.3)
+```
+
+```{r plot data2,fig.width = 7, fig.height = 6, fig.align = "center"}
+plot(data2)
+```
+And, as it can be seen in the figures, the coefficients change according to the person (damping factor, period, gain). Initial value, speed and equilibrium value could also change if their initial value was different from 0. These have been set to 0 for readability of the results but they could also be included.
+
+### Example 3 - Using an initial condition in a time different from t0=0
+
+The functions to generate the solution of the second order differential equation allow to specify the time for which the initial condition (y0 and v0) are given. This time must be between the minimum and the maximum value of the time vector given to the function. Below an example specifying the value, the derivative of the signal at a given time:
+
+```{r example3}
+time <- 0:99
+data3 <- generate.panel.2order(time = time,
+                         excitation = as.numeric(time>20),
+                         xi = 0.3,
+                         period = 30,
+                         k = 1,
+                         y0 = 2,
+                         v0 = 1,
+                         t0 = 15,nind = 1)
+plot(data3)
+```
+
+The function `generate.2order` generated for all time given the unique solution of the differential equation that has value 3 at $t = 25$ and a derivative of 1 at this point.
+
+
+### Example 4 - studying the effect of periodical excitations
+
+The excitation can be of any form. This package can also be used to simulate driven damped oscillators:
+
+```{r simulation plot example4, fig.width = 5, fig.height = 4, fig.align = "center"}
+t <- 0:99
+excitation <- 5*sin(2*pi*t/10)
+driven_dlo <- generate.panel.2order(time = t, 
+                              excitation = excitation, 
+                              y0 = 10, 
+                              xi = 0.2, 
+                              period = 20,
+                              nind = 1)
+plot(driven_dlo)
+```
+
+Here we can see that the system, which has a natural period of 20, has a steady state that oscillate with the same period as the excitation, that is a period of 10.
+
+## Analyzing data
+
+Analyzing the signals generated in the previous examples, we will verify that the parameters were the one introduced in the simulation function and that the estimated signals generated match the simulated ones.
+
+### Example 1 - Analyzing data from a single individual
+
+The simplest case is the one in which the data measured corresponds to a single individual. The call to the function is almost the same but omitting the `id` parameter in the call. The input parameter "verbose" as in other R functions, allows to print (using the package `futile.logger`) the actions carried out by the function until the calculation of the result:
+
+```{r analysis example1}
+res1 <- analyze.2order(data = data1[id==1],
+                      input = "excitation",
+                      time ="time",
+                      signal = "signal",
+                      dermethod = "gold",
+                      derparam = 3,
+                      verbose=T)
+```
+
+```{r plot res1,fig.width = 6, fig.height = 4, fig.pos = 0.5, fig.align = "center"}
+plot(res1)
+```
+
+
+### Example 2 - Analyzing data with several individuals and some inter and intra-individual noise
+
+Analyzing the data generated in the example 2 of the simulation section, the user must specify the name of the columns containing the id of the participants, the excitation, and the signal.
+As several methods are available for the estimation of the derivatives, the user needs to specify which method to use (`gold` is the default) and the embedding dimension (see the package pdf manual for more details).
+
+```{r res2}
+res2 <- analyze.2order(data = data2,
+                        id = "id",
+                        input ="excitation",
+                        time ="time",
+                        signal = "signal",
+                        dermethod = "gold",
+                        derparam = 5,
+                        order = 4)
+```
+
+
+```{r plot res2,fig.width = 7, fig.height = 6, fig.align = "center"}
+plot(res2)
+```
+
+### Example 3 - Enhancing the fit by changing the embedding number/ smoothing parameter.
+
+As it was mentioned before, the estimation of derivatives is a source of bias. The previous fit can be enhanced in three ways:
+
+* By changing the embedding number/smoothing parameter
+
+* By changing the order of the derivative
+
+* By changing the derivation method
+
+In the following example, we will use the function `optimum_param` of the `doremi` package to find the embedding number that provides an R2 the closest to 1. The other ways can be tested "manually" by calling the other functions, for instance, in a simulation study.
+
+```{r res3}
+res3 <- optimum_param (data=data2,
+                      id="id",
+                      input="excitation",
+                      time="time",
+                      signal="signal",
+                      model = "2order",
+                      dermethod = "glla",
+                      order = 2,
+                      pmin = 5,
+                      pmax = 17,
+                      pstep = 2)
+res3$analysis
+res3$summary_opt
+res3$d
+```
+
+And, from the range provided, an embedding number of 13 produces the best fit and that the coefficients are closer to their true values than the ones estimated in the previous example.
+
+If we want to graphically see the evolution of the coefficients according to the embedding number in this case, we can easily plot the results with the `plot` function. This will call the method for the plotting of "doremiparam" objects:
+
+```{r plot res3, fig.width = 7, fig.height = 6, fig.align = "center"}
+plot(res3)
+```
+And doing again the analysis with the optimum embedding number:
+```{r optimum analysis res3b}
+res3b <- analyze.2order(data = data2,
+                        id = "id",
+                        input ="excitation",
+                        time ="time",
+                        signal = "signal",
+                        dermethod = "glla",
+                        derparam = res3$d,
+                        order = 2)
+res3b
+```
+
+
+```{r plot res3b,fig.width = 7, fig.height = 6, fig.align = "center"}
+plot(res3b)
+```
+
+### Example 4 - Analyzing data when the signal is subject to several excitations and no noise
+
+In this example, we will generate the response to 3 excitations, with a gain different for each excitation.
+
+```{r example4}
+#Simulating data with these hypothesis
+#Generating the three excitation signals:
+time <- 1:100
+u1 <- as.numeric(time < 20 & time > 10)
+u2 <- as.numeric(time < 40 & time > 30)
+u3 <- as.numeric(time < 80 & time > 70)
+# Arbitrarily choosing a = 1, b = 2 and c = 5 for the first individual
+et1 <- u1 + 3*u2 + 5*u3
+
+y1 <- generate.2order(time = time,
+                      excitation = et1)$y
+#as we are using the $y argument of the object generated
+
+#Signals for the second individual;
+# Arbitrarily choosing a = 1, b = 2.5 and c = 4 for the second individual
+et2 <- u1 + 2.5*u2 + 4*u3
+y2 <- generate.2order(time = time,
+                      excitation = et2)$y 
+
+#Generating table with signals
+dataa4 <- data.table::data.table(id = rep(c(1, 2), c(length(et1), length(et2))), 
+                 time = c(time, time),
+                 excitation1 = rep(u1,2),
+                 excitation2 = rep(u2,2),
+                 excitation3 = rep(u3,2),
+                 signal_no_noise = c(y1, y2))
+dataa4[,signal := signal_no_noise + rnorm(.N,0,0.5)]
+dataa4[,excitation := excitation1 + excitation2 + excitation3]
+```
+
+```{r plot example4,fig.width = 7, fig.height = 4, fig.align = "center"}
+#Plotting signals
+ggplot2::ggplot( data = dataa4) +
+  ggplot2::geom_line(ggplot2::aes(time,signal_no_noise, colour = "Signal_no_noise"))+
+  ggplot2::geom_point(ggplot2::aes(time,signal, colour = "Signal"))+
+  ggplot2::geom_line(ggplot2::aes(time,excitation,colour = "Total excitation"))+
+  ggplot2::facet_wrap(~id)+
+  ggplot2::labs(x = "Time (s)",
+           y = "Signal (arb. unit)",
+           colour = "")
+```
+
+We see that we generate three different amplitudes of response for these three excitations. It is possible to estimate the gain for each excitation by giving a vector of the different excitation column to the `analyze.2order` function, as shown below:
+
+```{r res4}
+#Analyzing signals
+res4 <- analyze.2order(data = dataa4,
+                       id = "id",
+                       input = c("excitation1", "excitation2", "excitation3"),
+                       time = "time",
+                       signal = "signal",
+                       dermethod = "glla",
+                       derparam = 7)
+
+#Looking for the calculation of the coefficients of the excitation
+res4
+res4$resultid
+
+```
+
+And one can find the gains estimated for each excitation by extracting them from the `$resultid`. They are a good approximation of the coefficients introduced.
+
+```{r plot res4,fig.width = 7, fig.height = 4, fig.align = "center"}
+#Plotting signals
+plot(res4)
+```
